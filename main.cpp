@@ -1,5 +1,3 @@
-// Iskakov Ismagil CS-02
-// i.iskakov@innopolis.university
 #include <iostream>
 #include <vector>
 #include <iomanip>
