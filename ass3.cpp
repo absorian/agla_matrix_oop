@@ -701,9 +701,9 @@ void log(const matrix<T> &a, typename matrix<T>::elim_state state = matrix<T>::E
     cout << a.get_augmented();
 }
 
-#define PLOT 1
+#define PLOT 1 // 0 - no plot, 1 - v(k), 2 - v(t) & k(t)
 
-#if PLOT == 1
+#if PLOT > 0
 #ifdef WIN32
 #define GNUPLOT_NAME "\"C:\\Program Files\\gnuplot\\bin\\gnuplot\" -persist"
 #else
@@ -712,7 +712,7 @@ void log(const matrix<T> &a, typename matrix<T>::elim_state state = matrix<T>::E
 #endif
 
 int main() {
-#if PLOT == 1
+#if PLOT > 0
 #ifdef WIN32
     FILE *pipe = _popen(GNUPLOT_NAME, "w");
 #else
@@ -753,7 +753,7 @@ int main() {
     column_vector<complex<double>> cfs = A.inverse() * (initial - shift);
 
     // ranges for the field in gnuplot
-#if PLOT == 1
+#if PLOT > 0
     double rx_min = INT32_MAX, ry_min = INT32_MAX;
     double rx_max = INT32_MIN, ry_max = INT32_MIN;
 #endif
@@ -770,7 +770,7 @@ int main() {
         points[i] = A * matrix<complex<double>>{ {complex{cos(degree), sin(degree)}, 0}, // cf * e^(eigenv * i * t)
                                                 {0, complex{cos(-degree), sin(-degree)}} } * cfs + shift;
 
-#if PLOT == 1
+#if PLOT > 0
         rx_max = std::max(rx_max, points[i][0][0].real());
         ry_max = std::max(ry_max, points[i][1][0].real());
         rx_min = std::min(rx_min, points[i][0][0].real());
@@ -781,19 +781,38 @@ int main() {
     }
     cout << '\n';
 
-    cout << "v:\n";
-    for (int i = 0; i < num_pts + 1; ++i) {
-        cout << points[i][0][0].real() << ' ';
-    }
-    cout << '\n';
-
 #if PLOT == 1
     double rx_shift = rx_max * 0.1;
     double ry_shift = ry_max * 0.1;
     fprintf(pipe, "set xzeroaxis\nset yzeroaxis\n");
     fprintf(pipe, "set xrange [%lf:%lf]\n", rx_min - rx_shift, rx_max + rx_shift);
     fprintf(pipe, "set yrange [%lf:%lf]\n", ry_min - ry_shift, ry_max + ry_shift);
-    fprintf(pipe, "plot '-' using 1:2 with linespoints title \"predator(y)-prey(x) model\"\n");
+    fprintf(pipe, "plot '-' using 1:2 with " \
+            "linespoints title \"predator(y)-prey(x) model\"\n");
+#endif
+
+#if PLOT == 2
+    fprintf(pipe, "set xzeroaxis\nset yzeroaxis\n");
+    fprintf(pipe, "plot '-' using 1:2 with " \
+            "lines title \"prey\", " \
+                  "'-' using 1:2 with lines title \"predator\"\n");
+    cur_time = 0;
+#endif
+
+
+    cout << "v:\n";
+    for (int i = 0; i < num_pts + 1; ++i) {
+        cout << points[i][0][0].real() << ' ';
+#if PLOT == 2
+        fprintf(pipe, "%lf\t%lf\n", cur_time, points[i][0][0].real());
+        cur_time += time_shift;
+#endif
+    }
+    cout << '\n';
+
+#if PLOT == 2
+    fprintf(pipe, "e\n");
+    cur_time = 0;
 #endif
 
     cout << "k:\n";
@@ -801,11 +820,14 @@ int main() {
         cout << points[i][1][0].real() << ' ';
 #if PLOT == 1
         fprintf(pipe, "%lf\t%lf\n", points[i][0][0].real(), points[i][1][0].real());
+#elif PLOT == 2
+        fprintf(pipe, "%lf\t%lf\n", cur_time, points[i][1][0].real());
+        cur_time += time_shift;
 #endif
     }
     cout << '\n';
 
-#if PLOT == 1
+#if PLOT > 0
     fprintf(pipe, "e\n");
     fflush(pipe);
 
@@ -818,6 +840,6 @@ int main() {
 #else
     pclose(pipe);
 #endif
-#endif // PLOT == 1
+#endif // PLOT > 0
     return 0;
 }
